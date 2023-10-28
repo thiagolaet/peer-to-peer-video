@@ -10,8 +10,15 @@ def main():
             msg = client.recv(1024).decode()
             print(msg)
 
-            option = input()
+            if msg == 'Cadastro realizado com sucesso!':
+                continue
+
+            if msg == 'Desconectando...':
+                break
+
+            option = str(input())
             client.send(option.encode())
+        client.close()
 
 if __name__ == "__main__":
     main()
