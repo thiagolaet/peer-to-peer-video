@@ -25,12 +25,35 @@ def save_user(conn, username, ip, port):
     print(f'Usuário salvo com sucesso!\nIP: {ip} | Porta: {port} | Username: {username}')
     conn.send('Cadastro realizado com sucesso!\n'.encode())
 
+def get_user_by_username(conn):
+    conn.send('Digite o nome de usuário: '.encode())
+    username = conn.recv(1024).decode()
+    user = user_repository.get_by_username(username)
+    if user is None:
+        msg = 'Usuário não encontrado.'
+    else:
+        msg = f'-----------------------------------\nIP | porta | username\n-----------------------------------\n{user.ip} | {user.port} | {user.username}'
+    conn.send(msg.encode())
+
+def list_all(conn):
+    users = user_repository.all()
+    if len(users) == 0:
+        msg = 'Não há usuários cadastrados.'
+    else:
+        msg = '-----------------------------------\nIP | porta | username\n-----------------------------------\n'
+        for user in users:
+            msg += f'{user.ip} | {user.port} | {user.username}\n'
+    conn.send(msg.encode())
+
 def menu(conn):
     while True:
         conn.send('-----------------------------------\n1 - Listar usuários\n2 - Buscar usuário\n3 - Descadastrar\n4 - Sair\n-----------------------------------'.encode())
         user_option = conn.recv(1024).decode()
-        print(user_option)
-        if user_option == '4':
+        if user_option == '1':
+            list_all(conn)
+        elif user_option == '2':
+            get_user_by_username(conn)
+        elif user_option == '4':
             conn.send('Desconectando...'.encode())
             break
 

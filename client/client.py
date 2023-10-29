@@ -10,9 +10,6 @@ def main():
             msg = client.recv(1024).decode()
             print(msg)
 
-            if msg == 'Cadastro realizado com sucesso!':
-                continue
-
             if msg == 'Desconectando...':
                 break
 

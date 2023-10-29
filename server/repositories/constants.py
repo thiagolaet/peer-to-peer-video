@@ -24,3 +24,11 @@ SELECT_BY_USERNAME_QUERY = '''
 SELECT_BY_IP_QUERY = '''
     SELECT * FROM user WHERE ip = ?
 '''
+
+SELECT_BY_USERNAME_QUERY = '''
+    SELECT * FROM user WHERE username = ?
+'''
+
+SELECT_ALL_QUERY = '''
+    SELECT * FROM user
+'''

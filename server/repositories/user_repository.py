@@ -32,3 +32,21 @@ class UserRepository:
         if user is None:
             return user
         return self.user_factory.create_from_tuple(user)
+
+    def all(self):
+        db = sqlite3.connect(C.DB_NAME)
+        cursor = db.cursor()
+        cursor.execute(C.SELECT_ALL_QUERY)
+        users = cursor.fetchall()
+        db.close()
+        return [self.user_factory.create_from_tuple(user) for user in users]
+
+    def get_by_username(self, username):
+        db = sqlite3.connect(C.DB_NAME)
+        cursor = db.cursor()
+        cursor.execute(C.SELECT_BY_USERNAME_QUERY, (username,))
+        user = cursor.fetchone()
+        db.close()
+        if user is None:
+            return user
+        return self.user_factory.create_from_tuple(user)
