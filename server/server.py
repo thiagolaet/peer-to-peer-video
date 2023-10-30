@@ -1,7 +1,7 @@
 import socket
 from repositories.user_repository import UserRepository
 
-HOST = "127.0.0.28"  # Standard loopback interface address (localhost)
+HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports  are > 1023)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -9,14 +9,18 @@ server.bind((HOST, PORT))
 
 user_repository = UserRepository()
 
-def is_ip_registered(ip):
+def get_user(ip):
     user = user_repository.get_by_ip(ip)
     return user
 
 def register(conn, ip):
     conn.send('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: '.encode())
     username = conn.recv(1024).decode()
-    print("Primeiro username:", username)
+    is_username_unavailable = user_repository.get_by_username(username)
+    while is_username_unavailable:
+        conn.send('Nome de usuário já cadastrado, por favor digite outro nome de usuário: '.encode())
+        username = conn.recv(1024).decode()
+        is_username_unavailable = user_repository.get_by_username(username)
     conn.send('Digite a porta para o recebimento de chamadas: '.encode())
     port = conn.recv(1024).decode()
     save_user(conn, username, ip, port)
@@ -80,8 +84,11 @@ def main():
         ip, port = conn.getpeername()
         with conn:
             print(f"Novo usuário conectado: IP {ip}")
-            #if not is_ip_registered(ip):
-            register(conn, ip)
+            user = get_user(ip)
+            if not user:
+                register(conn, ip)
+            else:
+                conn.send(f"Bem-vindo, {user.username}!".encode())
             menu(conn)
         conn.close()
 
