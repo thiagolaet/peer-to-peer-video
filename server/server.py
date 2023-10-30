@@ -14,10 +14,17 @@ def is_ip_registered(ip):
     return user
 
 def register(conn, ip):
+    # TODO: testar validações -> Não consigo registrar mais de um cliente no momento
     conn.send('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: '.encode())
     username = conn.recv(1024).decode()
+    while username == '':
+        conn.send('Nome de usuário inválido, por favor informe um nome de usuário válido\n'.encode())
+        username = conn.recv(1024).decode()
     conn.send('Digite a porta para o recebimento de chamadas: '.encode())
     port = conn.recv(1024).decode()
+    while port == '':
+        conn.send('Porta inválida, por favor informe uma porta válida\n'.encode())
+        port = conn.recv(1024).decode()
     save_user(conn, username, ip, port)
 
 def save_user(conn, username, ip, port):
@@ -45,6 +52,19 @@ def list_all(conn):
             msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
+def remove_user(conn):
+    # TODO: Na verdade deve ser removida a instância atual? Faz sentido fazer no cliente?
+    msg = "Digite o nome do usuário que deseja descadastrar"
+    conn.send(msg.encode())
+    username = conn.recv(1024).decode()
+    user = user_repository.get_by_username(username)
+    if user is None:
+        msg = 'Usuário não encontrado.'
+    else:
+        pass
+    conn.send(msg.encode())
+
+
 def menu(conn):
     while True:
         conn.send('-----------------------------------\n1 - Listar usuários\n2 - Buscar usuário\n3 - Descadastrar\n4 - Sair\n-----------------------------------'.encode())
@@ -53,6 +73,8 @@ def menu(conn):
             list_all(conn)
         elif user_option == '2':
             get_user_by_username(conn)
+        elif user_option == '3':
+            remove_user(conn)
         elif user_option == '4':
             conn.send('Desconectando...'.encode())
             break
