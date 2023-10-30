@@ -7,6 +7,8 @@ PORT = 65432  # Port to listen on (non-privileged ports  are > 1023)
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 
+delimiter = '0111110'
+
 user_repository = UserRepository()
 
 def get_user(ip):
@@ -14,14 +16,14 @@ def get_user(ip):
     return user
 
 def register(conn, ip):
-    conn.send('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: '.encode())
+    conn.send(('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
     is_username_unavailable = user_repository.get_by_username(username)
     while is_username_unavailable:
-        conn.send('Nome de usuário já cadastrado, por favor digite outro nome de usuário: '.encode())
+        conn.send(('Nome de usuário já cadastrado, por favor digite outro nome de usuário: ' + delimiter).encode())
         username = conn.recv(1024).decode()
         is_username_unavailable = user_repository.get_by_username(username)
-    conn.send('Digite a porta para o recebimento de chamadas: '.encode())
+    conn.send(('Digite a porta para o recebimento de chamadas: ' + delimiter).encode())
     port = conn.recv(1024).decode()
     save_user(conn, username, ip, port)
 
