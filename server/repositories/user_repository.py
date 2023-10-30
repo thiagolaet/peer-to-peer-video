@@ -50,3 +50,10 @@ class UserRepository:
         if user is None:
             return user
         return self.user_factory.create_from_tuple(user)
+
+    def delete_by_ip(self, ip):
+        db = sqlite3.connect(C.DB_NAME)
+        cursor = db.cursor()
+        cursor.execute(C.DELETE_BY_IP_QUERY, (ip,))
+        db.commit()
+        db.close()

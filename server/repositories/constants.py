@@ -13,8 +13,8 @@ INSERT_QUERY = '''
     INSERT INTO user (username, ip, port) VALUES (?, ?, ?);
 '''
 
-DELETE_QUERY = '''
-    DELETE FROM user WHERE id = ?
+DELETE_BY_IP_QUERY = '''
+    DELETE FROM user WHERE ip = ?
 '''
 
 SELECT_BY_USERNAME_QUERY = '''

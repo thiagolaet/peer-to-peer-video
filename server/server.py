@@ -47,17 +47,14 @@ def list_all(conn):
     conn.send(msg.encode())
 
 def remove_user(conn):
-    # TODO: Na verdade deve ser removida a instância atual? Faz sentido fazer no cliente?
-    msg = "Digite o nome do usuário que deseja descadastrar"
-    conn.send(msg.encode())
-    username = conn.recv(1024).decode()
-    user = user_repository.get_by_username(username)
+    user_ip = conn.getpeername()[0]
+    user = user_repository.get_by_ip(user_ip)
     if user is None:
         msg = 'Usuário não encontrado.'
     else:
-        pass
+        user_repository.delete_by_ip(user_ip)
+        msg = 'Usuário removido com sucesso.'
     conn.send(msg.encode())
-
 
 def menu(conn):
     while True:
@@ -69,6 +66,8 @@ def menu(conn):
             get_user_by_username(conn)
         elif user_option == '3':
             remove_user(conn)
+            conn.send('Desconectando...'.encode())
+            break
         elif user_option == '4':
             conn.send('Desconectando...'.encode())
             break
