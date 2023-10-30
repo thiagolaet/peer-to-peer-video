@@ -1,7 +1,7 @@
 import socket
 from repositories.user_repository import UserRepository
 
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+HOST = "127.0.0.28"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports  are > 1023)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,17 +14,11 @@ def is_ip_registered(ip):
     return user
 
 def register(conn, ip):
-    # TODO: testar validações -> Não consigo registrar mais de um cliente no momento
     conn.send('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: '.encode())
     username = conn.recv(1024).decode()
-    while username == '':
-        conn.send('Nome de usuário inválido, por favor informe um nome de usuário válido\n'.encode())
-        username = conn.recv(1024).decode()
+    print("Primeiro username:", username)
     conn.send('Digite a porta para o recebimento de chamadas: '.encode())
     port = conn.recv(1024).decode()
-    while port == '':
-        conn.send('Porta inválida, por favor informe uma porta válida\n'.encode())
-        port = conn.recv(1024).decode()
     save_user(conn, username, ip, port)
 
 def save_user(conn, username, ip, port):
@@ -87,8 +81,8 @@ def main():
         ip, port = conn.getpeername()
         with conn:
             print(f"Novo usuário conectado: IP {ip}")
-            if not is_ip_registered(ip):
-                register(conn, ip)
+            #if not is_ip_registered(ip):
+            register(conn, ip)
             menu(conn)
         conn.close()
 
