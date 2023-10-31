@@ -21,7 +21,7 @@ class UserRepository:
         id = cursor.lastrowid
         db.commit()
         db.close()
-        return id
+        return self.user_factory.create_from_tuple((id, username, ip, port))
 
     def get_by_ip(self, ip):
         db = sqlite3.connect(C.DB_NAME)
