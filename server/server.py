@@ -1,8 +1,8 @@
 import socket
 from repositories.user_repository import UserRepository
 
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
-PORT = 65432  # Port to listen on (non-privileged ports  are > 1023)
+HOST = "127.0.0.1"
+PORT = 65432
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
@@ -18,13 +18,16 @@ def get_user(ip):
 def register(conn, ip):
     conn.send(('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
-    is_username_unavailable = user_repository.get_by_username(username)
+    is_username_unavailable = user_repository.get_by_username(username) or username == ''
     while is_username_unavailable:
-        conn.send(('Nome de usuário já cadastrado, por favor digite outro nome de usuário: ' + delimiter).encode())
+        conn.send(('Nome de usuário inválido ou já cadastrado, por favor digite outro nome de usuário: ' + delimiter).encode())
         username = conn.recv(1024).decode()
         is_username_unavailable = user_repository.get_by_username(username)
     conn.send(('Digite a porta para o recebimento de chamadas: ' + delimiter).encode())
     port = conn.recv(1024).decode()
+    while not port:
+        conn.send(('Porta inválida, por favor digite outra porta: ' + delimiter).encode())
+        port = conn.recv(1024).decode()
     save_user(conn, username, ip, port)
 
 def save_user(conn, username, ip, port):
@@ -48,7 +51,8 @@ def list_all(conn):
         msg = 'Não há usuários cadastrados.'
     else:
         msg = '-----------------------------------\n' \
-              'IP | porta | username\n'
+              'IP | porta | username\n' \
+              '-----------------------------------\n'
         for user in users:
             msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
@@ -85,15 +89,19 @@ def main():
         server.listen()
         conn, addr = server.accept()
         ip, port = conn.getpeername()
-        with conn:
-            print(f"Novo usuário conectado: IP {ip}")
-            user = get_user(ip)
-            if not user:
-                register(conn, ip)
-            else:
-                conn.send(f"Bem-vindo, {user.username}!\n".encode())
-            menu(conn)
-        conn.close()
+        try:
+            with conn:
+                print(f"Novo usuário conectado: IP {ip}")
+                user = get_user(ip)
+                if not user:
+                    register(conn, ip)
+                else:
+                    conn.send(f"Bem-vindo, {user.username}!\n".encode())
+                menu(conn)
+        except BrokenPipeError as e:
+            print(f'O usuário de IP {ip} perdeu conexão.')
+        finally:
+            conn.close()
 
 if __name__ == "__main__":
     main()

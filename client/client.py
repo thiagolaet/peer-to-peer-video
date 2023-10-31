@@ -1,7 +1,7 @@
 import socket
 
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 65432  # The port used by the server
+HOST = "127.0.0.1"
+PORT = 65432
 
 delimiter = '0111110'
 
@@ -19,10 +19,12 @@ def main():
             if 'Desconectando...' in msg:
                 break
 
-            option = str(input('Aguardando input: \n'))
+            option = str(input('Aguardando input...\n'))
+            while not option:
+                print('Input inválido, tente novamente.')
+                option = str(input('Aguardando input...\n'))
             client.send(option.encode())
         client.close()
-
 
 if __name__ == "__main__":
     main()
