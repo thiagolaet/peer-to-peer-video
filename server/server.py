@@ -7,16 +7,23 @@ PORT = 65432  # Port to listen on (non-privileged ports  are > 1023)
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 
+delimiter = '0111110'
+
 user_repository = UserRepository()
 
-def is_ip_registered(ip):
+def get_user(ip):
     user = user_repository.get_by_ip(ip)
     return user
 
 def register(conn, ip):
-    conn.send('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: '.encode())
+    conn.send(('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
-    conn.send('Digite a porta para o recebimento de chamadas: '.encode())
+    is_username_unavailable = user_repository.get_by_username(username)
+    while is_username_unavailable:
+        conn.send(('Nome de usuário já cadastrado, por favor digite outro nome de usuário: ' + delimiter).encode())
+        username = conn.recv(1024).decode()
+        is_username_unavailable = user_repository.get_by_username(username)
+    conn.send(('Digite a porta para o recebimento de chamadas: ' + delimiter).encode())
     port = conn.recv(1024).decode()
     save_user(conn, username, ip, port)
 
@@ -26,13 +33,13 @@ def save_user(conn, username, ip, port):
     conn.send('Cadastro realizado com sucesso!\n'.encode())
 
 def get_user_by_username(conn):
-    conn.send('Digite o nome de usuário: '.encode())
+    conn.send(('Digite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
     user = user_repository.get_by_username(username)
     if user is None:
-        msg = 'Usuário não encontrado.'
+        msg = 'Usuário não encontrado.\n'
     else:
-        msg = f'-----------------------------------\nIP | porta | username\n-----------------------------------\n{user.ip} | {user.port} | {user.username}'
+        msg = f'-----------------------------------\nIP | porta | username\n-----------------------------------\n{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
 def list_all(conn):
@@ -40,21 +47,36 @@ def list_all(conn):
     if len(users) == 0:
         msg = 'Não há usuários cadastrados.'
     else:
-        msg = '-----------------------------------\nIP | porta | username\n-----------------------------------\n'
+        msg = '-----------------------------------\n' \
+              'IP | porta | username\n'
         for user in users:
             msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
+def remove_user(conn):
+    user_ip = conn.getpeername()[0]
+    user = user_repository.get_by_ip(user_ip)
+    if user is None:
+        msg = 'Usuário não encontrado.\n'
+    else:
+        user_repository.delete_by_ip(user_ip)
+        msg = 'Usuário removido com sucesso.\n'
+    conn.send(msg.encode())
+
 def menu(conn):
     while True:
-        conn.send('-----------------------------------\n1 - Listar usuários\n2 - Buscar usuário\n3 - Descadastrar\n4 - Sair\n-----------------------------------'.encode())
+        conn.send(('-----------------------------------\n1 - Listar usuários\n2 - Buscar usuário\n3 - Descadastrar\n4 - Sair\n-----------------------------------' + delimiter).encode())
         user_option = conn.recv(1024).decode()
         if user_option == '1':
             list_all(conn)
         elif user_option == '2':
             get_user_by_username(conn)
+        elif user_option == '3':
+            remove_user(conn)
+            conn.send(('Desconectando...' + delimiter).encode())
+            break
         elif user_option == '4':
-            conn.send('Desconectando...'.encode())
+            conn.send(('Desconectando...' + delimiter).encode())
             break
 
 def main():
@@ -65,8 +87,11 @@ def main():
         ip, port = conn.getpeername()
         with conn:
             print(f"Novo usuário conectado: IP {ip}")
-            if not is_ip_registered(ip):
+            user = get_user(ip)
+            if not user:
                 register(conn, ip)
+            else:
+                conn.send(f"Bem-vindo, {user.username}!\n".encode())
             menu(conn)
         conn.close()
 
