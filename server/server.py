@@ -9,11 +9,7 @@ delimiter = '\n\n\n'
 
 user_repository = UserRepository()
 
-def get_user(ip):
-    user = user_repository.get_by_ip(ip)
-    return user
-
-def register(conn, ip):
+def register_new_user(conn, ip):
     conn.send(('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
     is_username_unavailable = user_repository.get_by_username(username) or username == ''
@@ -30,7 +26,7 @@ def register(conn, ip):
 
 def save_user(conn, username, ip, port):
     user = user_repository.create(username, ip, port)
-    print(f'Usuário salvo com sucesso!\nIP: {ip} | Porta: {port} | Username: {username}')
+    print(f'Usuário cadastrado com sucesso:\nIP: {ip} | Porta: {port} | Username: {username}')
     conn.send('Cadastro realizado com sucesso!\n'.encode())
     return user
 
@@ -52,7 +48,7 @@ def list_active_users(conn, active_users):
         msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
-def list_all(conn):
+def list_registered_users(conn):
     users = user_repository.all()
     if len(users) == 0:
         msg = 'Não há usuários cadastrados.'
@@ -64,7 +60,7 @@ def list_all(conn):
             msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
-def remove_user(conn):
+def delete_user(conn):
     user_ip = conn.getpeername()[0]
     user = user_repository.get_by_ip(user_ip)
     if user is None:
@@ -72,20 +68,21 @@ def remove_user(conn):
     else:
         user_repository.delete_by_ip(user_ip)
         msg = 'Usuário descadastrado com sucesso.\n'
+        print(f'Usuário descadastrado com sucesso:\nIP: {user.ip} | Porta: {user.port} | Username: {user.username}')
     conn.send(msg.encode())
 
 def menu(conn, active_users):
     while True:
-        conn.send(('-----------------------------------\n1 - Listar usuários ativos\n2 - Listar usuários\n3 - Buscar usuário\n4 - Descadastrar\n5 - Sair\n-----------------------------------' + delimiter).encode())
+        conn.send(('-----------------------------------\n1 - Listar usuários ativos no momento\n2 - Listar usuários cadastrados\n3 - Buscar usuário\n4 - Descadastrar\n5 - Sair\n-----------------------------------' + delimiter).encode())
         user_option = conn.recv(1024).decode()
         if user_option == '1':
             list_active_users(conn, active_users)
         elif user_option == '2':
-            list_all(conn)
+            list_registered_users(conn)
         elif user_option == '3':
             get_user_by_username(conn)
         elif user_option == '4':
-            remove_user(conn)
+            delete_user(conn)
             conn.send(('Desconectando...' + delimiter).encode())
             break
         elif user_option == '5':
@@ -94,16 +91,20 @@ def menu(conn, active_users):
         else:
             conn.send(('Opção inválida, tente novamente.' + delimiter).encode())
 
-def handle_client(conn, addr, active_users):
+def log_user(conn, ip):
+    user = user_repository.get_by_ip(ip)
+    if not user:
+        user = register_new_user(conn, ip)
+    else:
+        conn.send(f"Bem-vindo, {user.username}!\n".encode())
+    return user
+
+def handle_new_client(conn, addr, active_users):
     ip, port = addr
     try:
         with conn:
             print(f"Novo usuário conectado: IP {ip}")
-            user = get_user(ip)
-            if not user:
-                user = register(conn, ip)
-            else:
-                conn.send(f"Bem-vindo, {user.username}!\n".encode())
+            user = log_user(conn, ip)
             active_users.append(user)
             menu(conn, active_users)
     except BrokenPipeError as e:
@@ -119,7 +120,7 @@ def main():
     while True:
         server.listen()
         conn, addr = server.accept()
-        client_thread = threading.Thread(target=handle_client, args=(conn, addr, active_users))
+        client_thread = threading.Thread(target=handle_new_client, args=(conn, addr, active_users))
         client_thread.start()
 
 if __name__ == "__main__":
