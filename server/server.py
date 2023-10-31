@@ -9,27 +9,35 @@ delimiter = '\n\n\n'
 
 user_repository = UserRepository()
 
+# Registra um novo usuário no banco de dados.
 def register_new_user(conn, ip):
     conn.send(('O seu IP não foi encontrado na lista de IPs cadastrados, prossiga com o cadastro.\nDigite o nome de usuário: ' + delimiter).encode())
+
     username = conn.recv(1024).decode()
     is_username_unavailable = user_repository.get_by_username(username) or username == ''
+    # Valida o nome de usuário.
     while is_username_unavailable:
         conn.send(('Nome de usuário inválido ou já cadastrado, por favor digite outro nome de usuário: ' + delimiter).encode())
         username = conn.recv(1024).decode()
         is_username_unavailable = user_repository.get_by_username(username)
+
     conn.send(('Digite a porta para o recebimento de chamadas: ' + delimiter).encode())
     port = conn.recv(1024).decode()
+    # Valida a porta.
     while not port:
         conn.send(('Porta inválida, por favor digite outra porta: ' + delimiter).encode())
         port = conn.recv(1024).decode()
+
     return save_user(conn, username, ip, port)
 
+# Salva um novo usuário no banco de dados.
 def save_user(conn, username, ip, port):
     user = user_repository.create(username, ip, port)
     print(f'Usuário cadastrado com sucesso:\nIP: {ip} | Porta: {port} | Username: {username}')
     conn.send('Cadastro realizado com sucesso!\n'.encode())
     return user
 
+# Busca um usuário no banco de dados pelo nome de usuário.
 def get_user_by_username(conn):
     conn.send(('Digite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
@@ -40,6 +48,7 @@ def get_user_by_username(conn):
         msg = f'-----------------------------------\nIP | porta | username\n-----------------------------------\n{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
+# Lista os usuários ativos no momento.
 def list_active_users(conn, active_users):
     msg = '-----------------------------------\n' \
             'IP | porta | username\n' \
@@ -48,6 +57,7 @@ def list_active_users(conn, active_users):
         msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
+# Lista todos os usuários cadastrados.
 def list_registered_users(conn):
     users = user_repository.all()
     if len(users) == 0:
@@ -60,6 +70,7 @@ def list_registered_users(conn):
             msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
+# Remove um usuário do banco de dados.
 def delete_user(conn):
     user_ip = conn.getpeername()[0]
     user = user_repository.get_by_ip(user_ip)
@@ -71,6 +82,7 @@ def delete_user(conn):
         print(f'Usuário descadastrado com sucesso:\nIP: {user.ip} | Porta: {user.port} | Username: {user.username}')
     conn.send(msg.encode())
 
+# Menu principal.
 def menu(conn, active_users):
     while True:
         conn.send(('-----------------------------------\n1 - Listar usuários ativos no momento\n2 - Listar usuários cadastrados\n3 - Buscar usuário\n4 - Descadastrar\n5 - Sair\n-----------------------------------' + delimiter).encode())
@@ -91,6 +103,7 @@ def menu(conn, active_users):
         else:
             conn.send(('Opção inválida, tente novamente.' + delimiter).encode())
 
+# Verifica se o usuário já está cadastrado no banco de dados e o registra, caso não esteja.
 def log_user(conn, ip):
     user = user_repository.get_by_ip(ip)
     if not user:
@@ -107,6 +120,7 @@ def handle_new_client(conn, addr, active_users):
             user = log_user(conn, ip)
             active_users.append(user)
             menu(conn, active_users)
+    # Trata o erro de conexão perdida com o cliente.
     except BrokenPipeError as e:
         print(f'O usuário de IP {ip} perdeu conexão.')
     finally:
@@ -115,15 +129,19 @@ def handle_new_client(conn, addr, active_users):
         conn.close()
 
 def main():
+    # Cria as tabelas do banco de dados, caso não existam.
     user_repository.create_tables()
     active_users = []
     while True:
+        # Aguarda por novas conexões.
         server.listen()
         conn, addr = server.accept()
+        # Cria uma thread para lidar com o novo cliente.
         client_thread = threading.Thread(target=handle_new_client, args=(conn, addr, active_users))
         client_thread.start()
 
 if __name__ == "__main__":
+    # Cria um objeto de socket TCP e o vincula ao endereço e porta especificados.
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, PORT))
     main()
