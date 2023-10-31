@@ -1,11 +1,9 @@
 import socket
+import threading
 from repositories.user_repository import UserRepository
 
 HOST = "127.0.0.1"
 PORT = 65432
-
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((HOST, PORT))
 
 delimiter = '0111110'
 
@@ -83,25 +81,31 @@ def menu(conn):
             conn.send(('Desconectando...' + delimiter).encode())
             break
 
+def handle_client(conn, addr):
+    ip, port = addr
+    try:
+        with conn:
+            print(f"Novo usuário conectado: IP {ip}")
+            user = get_user(ip)
+            if not user:
+                register(conn, ip)
+            else:
+                conn.send(f"Bem-vindo, {user.username}!\n".encode())
+            menu(conn)
+    except BrokenPipeError as e:
+        print(f'O usuário de IP {ip} perdeu conexão.')
+    finally:
+        conn.close()
+
 def main():
     user_repository.create_tables()
     while True:
         server.listen()
         conn, addr = server.accept()
-        ip, port = conn.getpeername()
-        try:
-            with conn:
-                print(f"Novo usuário conectado: IP {ip}")
-                user = get_user(ip)
-                if not user:
-                    register(conn, ip)
-                else:
-                    conn.send(f"Bem-vindo, {user.username}!\n".encode())
-                menu(conn)
-        except BrokenPipeError as e:
-            print(f'O usuário de IP {ip} perdeu conexão.')
-        finally:
-            conn.close()
+        client_thread = threading.Thread(target=handle_client, args=(conn, addr))
+        client_thread.start()
 
 if __name__ == "__main__":
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
     main()
