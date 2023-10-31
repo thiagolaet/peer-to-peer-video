@@ -1,7 +1,7 @@
 import socket
 from repositories.user_repository import UserRepository
 
-HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
+HOST = "127.0.0.10"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports  are > 1023)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -33,13 +33,13 @@ def save_user(conn, username, ip, port):
     conn.send('Cadastro realizado com sucesso!\n'.encode())
 
 def get_user_by_username(conn):
-    conn.send('Digite o nome de usuário: '.encode())
+    conn.send(('Digite o nome de usuário: ' + delimiter).encode())
     username = conn.recv(1024).decode()
     user = user_repository.get_by_username(username)
     if user is None:
-        msg = 'Usuário não encontrado.'
+        msg = 'Usuário não encontrado.\n'
     else:
-        msg = f'-----------------------------------\nIP | porta | username\n-----------------------------------\n{user.ip} | {user.port} | {user.username}'
+        msg = f'-----------------------------------\nIP | porta | username\n-----------------------------------\n{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
 
 def list_all(conn):
@@ -47,7 +47,8 @@ def list_all(conn):
     if len(users) == 0:
         msg = 'Não há usuários cadastrados.'
     else:
-        msg = '-----------------------------------\nIP | porta | username\n-----------------------------------\n'
+        msg = '-----------------------------------\n' \
+              'IP | porta | username\n'
         for user in users:
             msg += f'{user.ip} | {user.port} | {user.username}\n'
     conn.send(msg.encode())
@@ -56,15 +57,15 @@ def remove_user(conn):
     user_ip = conn.getpeername()[0]
     user = user_repository.get_by_ip(user_ip)
     if user is None:
-        msg = 'Usuário não encontrado.'
+        msg = 'Usuário não encontrado.\n'
     else:
         user_repository.delete_by_ip(user_ip)
-        msg = 'Usuário removido com sucesso.'
+        msg = 'Usuário removido com sucesso.\n'
     conn.send(msg.encode())
 
 def menu(conn):
     while True:
-        conn.send('-----------------------------------\n1 - Listar usuários\n2 - Buscar usuário\n3 - Descadastrar\n4 - Sair\n-----------------------------------'.encode())
+        conn.send(('-----------------------------------\n1 - Listar usuários\n2 - Buscar usuário\n3 - Descadastrar\n4 - Sair\n-----------------------------------' + delimiter).encode())
         user_option = conn.recv(1024).decode()
         if user_option == '1':
             list_all(conn)
@@ -72,10 +73,10 @@ def menu(conn):
             get_user_by_username(conn)
         elif user_option == '3':
             remove_user(conn)
-            conn.send('Desconectando...'.encode())
+            conn.send(('Desconectando...' + delimiter).encode())
             break
         elif user_option == '4':
-            conn.send('Desconectando...'.encode())
+            conn.send(('Desconectando...' + delimiter).encode())
             break
 
 def main():
@@ -90,7 +91,7 @@ def main():
             if not user:
                 register(conn, ip)
             else:
-                conn.send(f"Bem-vindo, {user.username}!".encode())
+                conn.send(f"Bem-vindo, {user.username}!\n".encode())
             menu(conn)
         conn.close()
 
