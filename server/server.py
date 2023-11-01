@@ -101,7 +101,7 @@ def menu(conn, active_users):
             conn.send(('Desconectando...' + delimiter).encode())
             break
         else:
-            conn.send(('Opção inválida, tente novamente.' + delimiter).encode())
+            conn.send(('Opção inválida, tente novamente.\n').encode())
 
 # Verifica se o usuário já está cadastrado no banco de dados e o registra, caso não esteja.
 def log_user(conn, ip):
