@@ -134,8 +134,6 @@ def menu(conn, active_users, user):
         elif user_option == '6':
             send_msg(conn, 'Desconectando...', disconnect=True)
             break
-        elif user_option == '10':
-            send_msg(conn, '')
         else:
             send_msg(conn, 'Opção inválida, tente novamente.\n')
 
