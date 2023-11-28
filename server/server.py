@@ -2,7 +2,7 @@ import socket
 import threading
 from repositories.user_repository import UserRepository
 
-HOST = "127.0.0.1"
+HOST = "25.30.163.114"
 PORT = 65432
 
 request_call_delimiter = '<call-identifier>'
@@ -102,7 +102,9 @@ def menu(conn, active_users):
             conn.send(('Desconectando...' + delimiter).encode())
             break
         elif user_option == '6':
-            conn.send(request_call_delimiter.encode())
+            conn.send((request_call_delimiter + delimiter).encode())
+        elif user_option == '10':
+            conn.send(''.encode())
         else:
             conn.send(('Opção inválida, tente novamente.\n').encode())
 
