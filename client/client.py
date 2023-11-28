@@ -7,7 +7,6 @@ PORT = 65432
 
 delimiter = '\n\n\n'
 request_call_delimiter = '<call-identifier>'
-streaming_server, audio_server, camera_stream, audio_stream = None, None, None, None
 
 
 def start_call(sender_ip, sender_port, destination_ip, destination_port):
@@ -15,7 +14,6 @@ def start_call(sender_ip, sender_port, destination_ip, destination_port):
     streaming_server.start_server()
     audio_server = AudioReceiver(sender_ip, sender_port + 100)
     audio_server.start_server()
-    time.sleep(5)
     camera_stream = CameraClient(destination_ip, destination_port)
     camera_stream.start_stream()
     audio_stream = AudioSender(destination_ip, destination_port + 100)
@@ -23,6 +21,8 @@ def start_call(sender_ip, sender_port, destination_ip, destination_port):
     return streaming_server, audio_server, camera_stream, audio_stream
 
 def main():
+    streaming_server, audio_server, camera_stream, audio_stream = None, None, None, None
+    is_streaming = False
     # Cria um socket TCP/IP.
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         client.connect((HOST, PORT))
@@ -32,10 +32,10 @@ def main():
             # Caso a mensagem não esteja completa, recebe o restante.
             while delimiter not in msg:
                 msg += client.recv(1024).decode()
-            if streaming_server:
-                msg += '\n-----------------------------------\nChamada em andamento\nPara encerrar, digite 10\n-----------------------------------\n'
 
             msg = msg.replace(delimiter, '')
+            if is_streaming:
+                msg += 'Chamada em andamento...\nPara encerrar, digite 10\n-----------------------------------\n'
             if request_call_delimiter in msg:
                 print('Realizando chamada...')
                 # print('Digite o IP do usuário que deseja chamar:')
@@ -48,6 +48,9 @@ def main():
                 ip_server_to_send_video_and_audio='25.30.163.114'
                 port_server_to_send_video_and_audio = port
                 streaming_server, audio_server, camera_stream, audio_stream = start_call(my_ip, port, ip_server_to_send_video_and_audio, port_server_to_send_video_and_audio)
+                print('Chamada inciada com sucesso! Para encerrar a chamada, digite 10.')
+                msg = msg.replace(request_call_delimiter, '')
+                is_streaming = True
 
             print(msg)
 
@@ -57,11 +60,12 @@ def main():
 
             # Envia a opção escolhida pelo usuário.
             option = str(input('Aguardando input...\n'))
-            if option == '10':
+            if option == '10' and is_streaming:
                 streaming_server.stop_server()
                 audio_server.stop_server()
                 camera_stream.stop_stream()
                 audio_stream.stop_stream()
+                is_streaming = False
                 streaming_server, audio_server, camera_stream, audio_stream = None, None, None, None
             while not option:
                 print('Input inválido, tente novamente.')
