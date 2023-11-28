@@ -1,4 +1,5 @@
 import socket
+from vidstream import StreamingServer, CameraClient, AudioSender, AudioReceiver
 
 HOST = "25.30.163.114"
 PORT = 65432
@@ -24,10 +25,16 @@ def main():
                 # ip = str(input())
                 # print('Digite a porta do usuário que deseja chamar:')
                 # port = str(input())
-                my_ip = client.getsockname()[0]
-                port = 8001
+                my_ip, ip_server_host = client.getsockname()[0]
+                port, port_server_host = 8001
                 server = StreamingServer(ip_server_host, port_server_host)
                 server.start_server()
+
+                server_audio = AudioReceiver(ip_server_host, port_server_host)
+                server_audio.start_server()
+
+                CameraClient(ip_server_to_send_video_and_audio, port_server_to_send_video_and_audio).start_stream()
+                AudioSender(ip_server_to_send_video_and_audio, port_server_to_send_video_and_audio + 100).start_stream()
                 continue
 
             print(msg)
