@@ -5,16 +5,17 @@ import json
 from vidstream import StreamingServer, CameraClient, AudioSender, AudioReceiver
 from time import sleep
 
-HOST = "127.0.0.1"
+HOST = "25.34.138.157"
 PORT = 65432
 
 delimiter = '\n\n\n'
 
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_socket_port = 65433
-udp_socket.bind(('127.0.0.1', udp_socket_port))
+udp_socket.bind(('25.34.138.157', udp_socket_port))
 shutdown_event = threading.Event()
 pause_tcp_event = threading.Event()
+pause_udp_event = threading.Event()
 
 # def input_timeout_handler(signum, frame):
 #     raise TimeoutError("Tempo de entrada excedido!")
@@ -54,9 +55,11 @@ def handle_tcp():
             if json_messages[-1]['make_request_call']:
                 print('Enviando solicitação de chamada...')
                 call_data = json_messages[-1]['msg']
-                print('conectando no ip: ', call_data['destination_ip'])
+                print('Enviando mensagem UDP para: ', call_data['destination_ip'], udp_socket_port)
+                pause_udp_event.set()
                 udp_socket.sendto(json.dumps(call_data).encode('utf-8'), (call_data['destination_ip'], udp_socket_port))
                 udp_socket.settimeout(20)
+                sleep(1)
                 # Aguardando resposta
                 try:
                     data, addr = udp_socket.recvfrom(1024)
@@ -65,7 +68,7 @@ def handle_tcp():
                     continue
                 response = json.loads(data)
                 if response['response']:
-                    print('dados da chamada:')
+                    print('Response: ', response)
                     print(call_data['sender_ip'], call_data['sender_port'], call_data['destination_ip'], call_data['destination_port'])
                     streaming_server, audio_server, camera_stream, audio_stream = start_call(
                         call_data['sender_ip'], call_data['sender_port'], call_data['destination_ip'], call_data['destination_port']
@@ -73,6 +76,7 @@ def handle_tcp():
                     print('Chamada em andamento.\nPara encerrar a chamada, digite 10.')
                     is_streaming = True
                 else:
+                    pause_udp_event.clear()
                     print('Chamada recusada.')
             elif json_messages[-1]['disconnect']:
                 break
@@ -113,7 +117,9 @@ def handle_udp():
     while not shutdown_event.is_set():
         try:
             pause_tcp_event.clear()
-            udp_socket.settimeout(3)
+            while pause_udp_event.is_set():
+                continue
+            udp_socket.settimeout(0.5)
             data, addr = udp_socket.recvfrom(1024)
             pause_tcp_event.set()
             data = json.loads(data)

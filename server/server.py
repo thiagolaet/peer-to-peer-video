@@ -3,8 +3,8 @@ import threading
 import json
 from repositories.user_repository import UserRepository
 
-HOST = "127.0.0.1"
-PORT = 65433
+HOST = "25.34.138.157"
+PORT = 65432
 
 request_call_delimiter = '<call-identifier>'
 delimiter = '\n\n\n'
