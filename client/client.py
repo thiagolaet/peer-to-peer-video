@@ -1,7 +1,9 @@
 import socket
 import threading
 import json
+# import signal
 from vidstream import StreamingServer, CameraClient, AudioSender, AudioReceiver
+from time import sleep
 
 HOST = "127.0.0.1"
 PORT = 65433
@@ -10,7 +12,13 @@ delimiter = '\n\n\n'
 
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_socket.bind(('127.0.0.1', 8006))
-is_tcp_running = True
+shutdown_event = threading.Event()
+pause_tcp_event = threading.Event()
+
+# def input_timeout_handler(signum, frame):
+#     raise TimeoutError("Tempo de entrada excedido!")
+
+# signal.signal(signal.SIGALRM, input_timeout_handler)
 
 def start_call(sender_ip, sender_port, destination_ip, destination_port):
     streaming_server = StreamingServer(sender_ip, sender_port)
@@ -43,14 +51,26 @@ def handle_tcp():
 
             print(msg_to_print)
             if json_messages[-1]['make_request_call']:
-                #     print('Enviando requisição de chamada...')
-                #     udp_socket.sendto('teste'.encode('utf-8'), ('127.0.0.1', 8006))
+                print('Enviando solicitação de chamada...')
                 call_data = json_messages[-1]['msg']
-                streaming_server, audio_server, camera_stream, audio_stream = start_call(
-                    call_data['sender_ip'], call_data['sender_port'], call_data['destination_ip'], call_data['destination_port']
-                )
-                print('Chamada em andamento.\nPara encerrar a chamada, digite 10.')
-                is_streaming = True
+                print('conectando no ip: ', call_data['destination_ip'])
+                udp_socket.sendto(json.dumps(call_data).encode('utf-8'), (call_data['destination_ip'], 8006))
+                udp_socket.settimeout(20)
+                # Aguardando resposta
+                try:
+                    data, addr = udp_socket.recvfrom(1024)
+                except socket.timeout:
+                    print('Tempo de resposta excedido.')
+                    continue
+                response = json.loads(data)
+                if response['response']:
+                    streaming_server, audio_server, camera_stream, audio_stream = start_call(
+                        call_data['sender_ip'], call_data['sender_port'], call_data['destination_ip'], call_data['destination_port']
+                    )
+                    print('Chamada em andamento.\nPara encerrar a chamada, digite 10.')
+                    is_streaming = True
+                else:
+                    print('Chamada recusada.')
             elif json_messages[-1]['disconnect']:
                 break
             # Caso a mensagem não esteja completa, recebe o restante.
@@ -81,12 +101,33 @@ def handle_tcp():
 
         # Encerra a conexão.
         client.close()
-        is_tcp_running = False
+        shutdown_event.set()
 
 def handle_udp():
-    while is_tcp_running:
-        data, addr = udp_socket.recvfrom(1024)
-        print(f"Recebido via UDP de {addr}: {data.decode('utf-8')}")
+    while not shutdown_event.is_set():
+        try:
+            udp_socket.settimeout(3)
+            data, addr = udp_socket.recvfrom(1024)
+            pause_tcp_event.set()
+            data = json.loads(data)
+            print(f"-----------------------------------\nNova chamada recebida: IP: {addr[0]} Porta {addr[1]}\n1 - Aceitar\n2 - Recusar\n-----------------------------------")
+            try:
+                option = str(input('Aguardando input...\n'))
+                # signal.alarm(20)
+                while option not in ['1', '2']:
+                    print('option', option)
+                    print('Input inválido, tente novamente.')
+                    option = str(input('Aguardando input...\n'))
+                if option == '1':
+                    udp_socket.sendto(json.dumps({'response': True}).encode('utf-8'), addr)
+                else:
+                    udp_socket.sendto(json.dumps({'response': False}).encode('utf-8'), addr)
+            except TimeoutError as e:
+                print()
+                print('Chamada recusada por falta de resposta.')
+        except socket.timeout:
+            pass
+    udp_socket.close()
 
 def main():
     tcp_thread = threading.Thread(target=handle_tcp)

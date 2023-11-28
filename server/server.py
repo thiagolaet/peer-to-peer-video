@@ -48,6 +48,9 @@ def start_call(conn, active_users, user):
         send_msg('Nome inválido, por favor digite outro nome: ', allow_input=True)
         receiver_name = conn.recv(1024).decode('utf-8')
     # Busca o nome entre os usuários ativos e retorna o ip e a porta do mesmo.
+    if receiver_name == user.username:
+        send_msg(conn, 'Não é permitido ligar para si mesmo.')
+        return
     for active_user in active_users:
         if active_user.username == receiver_name:
             send_msg(conn, {
