@@ -38,13 +38,17 @@ def handle_tcp():
                 if message:
                     json_msg = json.loads(message)
                     json_messages.append(json_msg)
-                    msg_to_print += json_msg['msg']
+                    if not json_msg['make_request_call']:
+                        msg_to_print += json_msg['msg']
 
             print(msg_to_print)
-            if json_messages[-1]['disconnect']:
+            if json_messages[-1]['make_request_call']:
+                call_data = json_messages[-1]['msg']
+                print(call_data)
+            elif json_messages[-1]['disconnect']:
                 break
             # Caso a mensagem não esteja completa, recebe o restante.
-            if not json_messages[-1]['allow_input']:
+            elif not json_messages[-1]['allow_input']:
                 continue
 
             # if request_call_delimiter in msg:

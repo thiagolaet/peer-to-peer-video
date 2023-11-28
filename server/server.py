@@ -11,11 +11,11 @@ delimiter = '\n\n\n'
 
 user_repository = UserRepository()
 
-def send_msg(conn, msg, allow_input=False, make_request=False, disconnect=False):
+def send_msg(conn, msg, allow_input=False, make_request_call=False, disconnect=False):
     conn.send((json.dumps({
         'msg': msg,
         'allow_input': allow_input,
-        'make_request': make_request,
+        'make_request_call': make_request_call,
         'disconnect': disconnect,
     }) + delimiter).encode('utf-8'))
 
@@ -41,38 +41,23 @@ def register_new_user(conn, ip):
     return save_user(conn, username, ip, port)
 
 def start_call(conn, active_users, user):
-    conn.send(('Digite o IP do usuário destinatário: ' + delimiter).encode('utf-8'))
-    destination_ip = conn.recv(1024).decode('utf-8')
-    # Valida o IP.
-    while not destination_ip:
-        conn.send(('IP inválido, por favor digite outro IP: ' + delimiter).encode('utf-8'))
-        destination_ip = conn.recv(1024).decode('utf-8')
-    conn.send(('Digite a porta do usuário destinatário: ' + delimiter).encode('utf-8'))
-    destination_port = conn.recv(1024).decode('utf-8')
-    # Valida a porta.
-    while not destination_port.isdigit():
-        conn.send(('Porta inválida, por favor digite outra porta: ' + delimiter).encode('utf-8'))
-        destination_port = conn.recv(1024).decode('utf-8')
-    # for active_user in active_users:
-    #     print('active_user', active_user.ip, active_user.port, 'destination', destination_ip, destination_port)
-    #     if active_user.ip == destination_ip and active_user.port == destination_port:
-    #         msg = {
-    #             "sender_ip": user.ip,
-    #             "sender_port": user.port,
-    #             "destination_ip": destination_ip,
-    #             "destination_port": destination_port,
-    #         }
-    #         conn.send((json.dumps(msg) + request_call_delimiter).encode('utf-8'))
-    #         return
-    # conn.send(('Usuário não encontrado, tente novamente.\n').encode('utf-8'))
-    msg = {
-        "sender_ip": user.ip,
-        "sender_port": user.port,
-        "destination_ip": destination_ip,
-        "destination_port": int(destination_port),
-    }
-    print((json.dumps(msg) + request_call_delimiter + delimiter))
-    conn.send((json.dumps(msg) + request_call_delimiter + delimiter).encode('utf-8'))
+    send_msg(conn, 'Digite o nome do usuário: ', allow_input=True)
+    receiver_name = conn.recv(1024).decode('utf-8')
+    # Valida o username.
+    while not receiver_name:
+        send_msg('Nome inválido, por favor digite outro nome: ', allow_input=True)
+        receiver_name = conn.recv(1024).decode('utf-8')
+    # Busca o nome entre os usuários ativos e retorna o ip e a porta do mesmo.
+    for active_user in active_users:
+        if active_user.username == receiver_name:
+            send_msg(conn, {
+                "sender_ip": user.ip,
+                "sender_port": user.port,
+                "destination_ip": active_user.ip,
+                "destination_port": active_user.port,
+            }, make_request_call=True)
+            return
+    send_msg(conn, 'Usuário não encontrado entre os usuários ativos no momento.')
 
 # Salva um novo usuário no banco de dados.
 def save_user(conn, username, ip, port):
