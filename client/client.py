@@ -1,9 +1,10 @@
 import socket
 
-HOST = "127.0.0.1"
+HOST = "25.30.163.114"
 PORT = 65432
 
 delimiter = '\n\n\n'
+request_call_delimiter = '<call-identifier>'
 
 def main():
     # Cria um socket TCP/IP.
@@ -17,6 +18,18 @@ def main():
                 msg += client.recv(1024).decode()
 
             msg = msg.replace(delimiter, '')
+            if request_call_delimiter in msg:
+                print('Realizando chamada...')
+                # print('Digite o IP do usuário que deseja chamar:')
+                # ip = str(input())
+                # print('Digite a porta do usuário que deseja chamar:')
+                # port = str(input())
+                my_ip = client.getsockname()[0]
+                port = 8001
+                server = StreamingServer(ip_server_host, port_server_host)
+                server.start_server()
+                continue
+
             print(msg)
 
             # Caso a mensagem recebida seja 'Desconectando...', encerra a conexão.
