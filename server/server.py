@@ -5,6 +5,7 @@ from repositories.user_repository import UserRepository
 HOST = "127.0.0.1"
 PORT = 65432
 
+request_call_delimiter = '<call-identifier>'
 delimiter = '\n\n\n'
 
 user_repository = UserRepository()
@@ -85,7 +86,7 @@ def delete_user(conn):
 # Menu principal.
 def menu(conn, active_users):
     while True:
-        conn.send(('-----------------------------------\n1 - Listar usuários ativos no momento\n2 - Listar usuários cadastrados\n3 - Buscar usuário\n4 - Descadastrar\n5 - Sair\n-----------------------------------' + delimiter).encode())
+        conn.send(('-----------------------------------\n1 - Listar usuários ativos no momento\n2 - Listar usuários cadastrados\n3 - Buscar usuário\n4 - Descadastrar\n5 - Sair\n6 - Realizar chamada\n-----------------------------------' + delimiter).encode())
         user_option = conn.recv(1024).decode()
         if user_option == '1':
             list_active_users(conn, active_users)
@@ -100,6 +101,8 @@ def menu(conn, active_users):
         elif user_option == '5':
             conn.send(('Desconectando...' + delimiter).encode())
             break
+        elif user_option == '6':
+            conn.send(request_call_delimiter.encode())
         else:
             conn.send(('Opção inválida, tente novamente.\n').encode())
 
